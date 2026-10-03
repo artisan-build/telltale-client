@@ -18,6 +18,13 @@
     "require": {
         "php": "^8.4",
         "artisan-build/telltale-contracts": "^1.0",
+        "ext-json": "*",
+        "ext-sqlite3": "*",
+        "ext-zlib": "*",
+        "illuminate/console": "^13.0",
+        "illuminate/encryption": "^13.0",
+        "illuminate/http": "^13.0",
+        "illuminate/queue": "^13.0",
         "illuminate/support": "^13.0"
     },
     "require-dev": {
@@ -36,6 +43,10 @@
         "psr-4": {
             "ArtisanBuild\\TelltaleClient\\Tests\\": "tests/"
         }
+    },
+    "suggest": {
+        "nativephp/desktop": "Use Telltale in a NativePHP Desktop application.",
+        "nativephp/mobile": "Use Telltale in a NativePHP Mobile application."
     },
     "scripts": {
         "lint": "pint",

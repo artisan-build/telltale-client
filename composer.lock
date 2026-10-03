@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "714721b5f4f4883b5ca1fc18374ef9b6",
+    "content-hash": "94810b3b049cae3e05b93ac1f66ba36d",
     "packages": [
         {
             "name": "artisan-build/telltale-contracts",
@@ -10258,7 +10258,10 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.4"
+        "php": "^8.4",
+        "ext-json": "*",
+        "ext-sqlite3": "*",
+        "ext-zlib": "*"
     },
     "platform-dev": {},
     "plugin-api-version": "2.9.0"
