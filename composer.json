@@ -1,0 +1,61 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "artisan-build/telltale-client",
+    "description": "NativePHP client package for reporting device analytics to a self-hosted Telltale server.",
+    "keywords": ["telltale", "nativephp", "analytics", "laravel"],
+    "license": "MIT",
+    "type": "library",
+    "version": "1.0.0",
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../telltale-contracts",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "artisan-build/telltale-contracts": "^1.0",
+        "illuminate/support": "^13.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.9",
+        "laravel/pint": "^1.27",
+        "orchestra/testbench": "^11.0",
+        "pestphp/pest": "^4.7",
+        "phpstan/phpstan": "^2.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "ArtisanBuild\\TelltaleClient\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ArtisanBuild\\TelltaleClient\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "lint": "pint",
+        "lint:check": "pint --test",
+        "stan": "phpstan analyse --memory-limit=256M",
+        "test": "pest"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "ArtisanBuild\\TelltaleClient\\TelltaleClientServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
