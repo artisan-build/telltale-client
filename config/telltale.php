@@ -11,12 +11,25 @@ return [
     'max_rows' => 10_000,
     'max_age_seconds' => 60 * 60 * 24 * 30,
     'http_timeout_seconds' => 10,
+    'capture' => [
+        'enabled' => true,
+        'platform' => 'auto',
+    ],
+    'session' => [
+        'inactivity_seconds' => 30 * 60,
+    ],
+    'trace_header' => [
+        'enabled' => true,
+    ],
     'backoff' => [
         'initial_seconds' => 15,
         'maximum_seconds' => 60 * 60,
     ],
     'queue' => [
         'connection' => 'database',
+        'name' => null,
         'tries' => 10,
+        'auto_dispatch' => true,
+        'deduplicate_seconds' => 15,
     ],
 ];

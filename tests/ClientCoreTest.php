@@ -27,31 +27,36 @@ it('captures to SQLite without network IO and preserves FIFO order', function ()
     Telltale::event('second', ['position' => 2]);
 
     $items = app(ClientDatabase::class)->batch(10);
+    $events = collect($items)->pluck('event')->whereIn('name', ['first', 'second'])->values();
 
-    expect($items)->toHaveCount(2)
-        ->and($items[0]->event['name'])->toBe('first')
-        ->and($items[1]->event['name'])->toBe('second');
+    expect($events)->toHaveCount(2)
+        ->and($events[0]['name'])->toBe('first')
+        ->and($events[1]['name'])->toBe('second');
     Http::assertNothingSent();
 });
 
 it('scrubs obvious PII after beforeSend transformations and can drop safely', function (): void {
     Telltale::beforeSend(function (array $event): array {
-        $event['name'] = 'transformed';
-        $event['props']['added'] = 'Contact person@example.test or +1 (415) 555-0123';
+        if (($event['name'] ?? null) === 'identify') {
+            $event['name'] = 'transformed';
+            $event['props']['added'] = 'Contact person@example.test or +1 (415) 555-0123';
+        }
 
         return $event;
     });
     Telltale::identify('person@example.test');
 
-    $event = app(ClientDatabase::class)->batch(10)[0]->event;
+    $database = app(ClientDatabase::class);
+    $event = collect($database->batch(10))->pluck('event')->firstWhere('name', 'transformed');
 
     expect($event['name'])->toBe('transformed')
         ->and($event['props']['user_id'])->toBe('[redacted-email]')
         ->and($event['props']['added'])->toBe('Contact [redacted-email] or [redacted-phone]');
 
+    $count = $database->outboxCount();
     Telltale::beforeSend(fn (): null => null);
     Telltale::event('dropped');
-    expect(app(ClientDatabase::class)->outboxCount())->toBe(1);
+    expect($database->outboxCount())->toBe($count);
 });
 
 it('contains throwing callbacks and invalid contract input', function (): void {
@@ -68,16 +73,21 @@ it('contains throwing callbacks and invalid contract input', function (): void {
         fclose($resource);
     }
 
-    expect(app(ClientDatabase::class)->outboxCount())->toBe(0);
+    $events = collect(app(ClientDatabase::class)->batch(10))->pluck('event');
+    expect($events)->toHaveCount(1)
+        ->and($events[0]['type'])->toBe('context')
+        ->and($events->pluck('name'))->not->toContain('safe', '');
 });
 
 it('evicts row and age overflow oldest first and accumulates drop totals', function (): void {
+    Telltale::event('bootstrap');
+    $database = app(ClientDatabase::class);
+    $database->acknowledge(array_column($database->batch(10), 'sequence'));
     config()->set('telltale.max_rows', 2);
     Telltale::event('first');
     Telltale::event('second');
     Telltale::event('third');
 
-    $database = app(ClientDatabase::class);
     $events = $database->batch(10);
 
     expect(array_column(array_column($events, 'event'), 'name'))->toBe(['second', 'third'])
@@ -115,5 +125,5 @@ it('persists opt out, clears immediately, suppresses capture and drain, then rec
     Telltale::optIn();
     Telltale::event('after');
     expect($database->isOptedOut())->toBeFalse()
-        ->and($database->batch(10)[0]->event['name'])->toBe('after');
+        ->and(collect($database->batch(10))->pluck('event')->pluck('name'))->toContain('after');
 });

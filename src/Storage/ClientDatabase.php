@@ -103,8 +103,70 @@ final class ClientDatabase
 
             if ($optedOut) {
                 $this->database->exec('DELETE FROM telltale_outbox');
+                $this->deleteSetting('active_session_id');
+                $this->deleteSetting('session_last_activity_at');
+                $this->deleteSetting('context_session_id');
+                $this->deleteSetting('drain_scheduled_until');
             }
         });
+    }
+
+    /**
+     * @return array{id: string|null, last_activity_at: int|null, context_session_id: string|null}
+     */
+    public function sessionState(): array
+    {
+        $id = $this->setting('active_session_id');
+        $lastActivity = $this->setting('session_last_activity_at');
+
+        return [
+            'id' => $id !== null && Str::isUuid($id) ? $id : null,
+            'last_activity_at' => $lastActivity !== null ? (int) $lastActivity : null,
+            'context_session_id' => $this->setting('context_session_id'),
+        ];
+    }
+
+    public function storeSession(string $sessionId, int $lastActivityAt): void
+    {
+        $this->putSetting('active_session_id', $sessionId);
+        $this->putSetting('session_last_activity_at', (string) $lastActivityAt);
+    }
+
+    public function markSessionContext(string $sessionId): void
+    {
+        $this->putSetting('context_session_id', $sessionId);
+    }
+
+    public function clearSession(): void
+    {
+        $this->deleteSetting('active_session_id');
+        $this->deleteSetting('session_last_activity_at');
+    }
+
+    public function claimDrainSchedule(int $now, int $deduplicateSeconds): bool
+    {
+        return $this->transaction(function () use ($now, $deduplicateSeconds): bool {
+            if ((int) ($this->setting('drain_scheduled_until') ?? 0) > $now) {
+                return false;
+            }
+
+            $this->putSetting(
+                'drain_scheduled_until',
+                (string) ($now + max(1, $deduplicateSeconds)),
+            );
+
+            return true;
+        });
+    }
+
+    public function deferDrainSchedule(int $until): void
+    {
+        $this->putSetting('drain_scheduled_until', (string) max(0, $until));
+    }
+
+    public function clearDrainSchedule(): void
+    {
+        $this->deleteSetting('drain_scheduled_until');
     }
 
     /**

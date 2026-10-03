@@ -15,18 +15,20 @@ it('registers then sends a FIFO gzip envelope with bearer auth and deletes ackno
     Http::fake(function (Request $request) use ($token, &$envelope) {
         if ($request->url() === 'https://telltale.test/api/register') {
             expect($request->hasHeader('X-Telltale-Ingest'))->toBeTrue()
+                ->and($request->hasHeader('X-Telltale-Session'))->toBeFalse()
                 ->and($request['install_id'])->toBe(app(ClientDatabase::class)->installId());
 
             return Http::response(['install_token' => $token], 201);
         }
 
         expect($request->hasHeader('Authorization', 'Bearer '.$token))->toBeTrue()
+            ->and($request->hasHeader('X-Telltale-Session'))->toBeFalse()
             ->and($request->hasHeader('Content-Encoding', 'gzip'))->toBeTrue();
         $decoded = gzdecode($request->body());
         expect($decoded)->not->toBeFalse();
         $envelope = json_decode((string) $decoded, true, flags: JSON_THROW_ON_ERROR);
 
-        return Http::response(['accepted' => 2, 'duplicates' => 0, 'dropped_events_total' => 0], 202);
+        return Http::response(['accepted' => 4, 'duplicates' => 0, 'dropped_events_total' => 0], 202);
     });
 
     Telltale::event('first');
@@ -36,8 +38,8 @@ it('registers then sends a FIFO gzip envelope with bearer auth and deletes ackno
     $result = Telltale::drain();
 
     expect($result->successful)->toBeTrue()
-        ->and($result->acknowledged)->toBe(2)
-        ->and(array_column($envelope['events'], 'name'))->toBe(['first', 'second'])
+        ->and($result->acknowledged)->toBe(4)
+        ->and(array_column($envelope['events'], 'name'))->toBe(['session_start', 'context', 'first', 'second'])
         ->and(app(ClientDatabase::class)->outboxCount())->toBe(0)
         ->and(app(ClientDatabase::class)->token())->toBe($token);
 });
@@ -65,7 +67,7 @@ it('preserves event ids across an uncertain replay and deletes only after acknow
 
     $first = Telltale::drain();
     expect($first->successful)->toBeFalse()
-        ->and($database->outboxCount())->toBe(1);
+        ->and($database->outboxCount())->toBe(3);
 
     $database->resetTransportBackoff();
     $second = Telltale::drain();
@@ -133,7 +135,7 @@ it('contains registration, 4xx, 5xx, and network failures and avoids hot loops',
         ->and($first->retryAfterSeconds)->toBe(2)
         ->and($second->successful)->toBeFalse()
         ->and($second->retryAfterSeconds)->toBeGreaterThan(0)
-        ->and($database->outboxCount())->toBe(1);
+        ->and($database->outboxCount())->toBe(3);
 })->with(['registration', 'client', 'server', 'network']);
 
 it('uses exponential bounded backoff', function (): void {
@@ -144,9 +146,11 @@ it('uses exponential bounded backoff', function (): void {
 });
 
 it('reports the cumulative drop total in every later envelope', function (): void {
-    config()->set('telltale.max_rows', 1);
     $database = app(ClientDatabase::class);
     $database->storeToken(bin2hex(random_bytes(48)));
+    Telltale::event('bootstrap');
+    $database->acknowledge(array_column($database->batch(10), 'sequence'));
+    config()->set('telltale.max_rows', 1);
     Telltale::event('evicted');
     Telltale::event('kept');
     $reported = null;

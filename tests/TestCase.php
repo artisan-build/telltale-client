@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArtisanBuild\TelltaleClient\Tests;
 
 use ArtisanBuild\TelltaleClient\TelltaleClientServiceProvider;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Foundation\Application;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -32,10 +33,12 @@ abstract class TestCase extends Orchestra
         $config->set('telltale.ingest', bin2hex(random_bytes(32)));
         $config->set('telltale.backoff.initial_seconds', 2);
         $config->set('telltale.backoff.maximum_seconds', 8);
+        $config->set('telltale.queue.auto_dispatch', false);
     }
 
     protected function tearDown(): void
     {
+        CarbonImmutable::setTestNow();
         parent::tearDown();
 
         foreach (['', '-shm', '-wal'] as $suffix) {

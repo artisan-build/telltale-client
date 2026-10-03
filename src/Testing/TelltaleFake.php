@@ -6,6 +6,8 @@ namespace ArtisanBuild\TelltaleClient\Testing;
 
 use ArtisanBuild\TelltaleClient\Contracts\TelltaleClient;
 use ArtisanBuild\TelltaleClient\Transport\DrainResult;
+use ArtisanBuild\TelltaleContracts\ErrorDetails;
+use ArtisanBuild\TelltaleContracts\EventType;
 use Closure;
 use PHPUnit\Framework\Assert;
 use Throwable;
@@ -76,6 +78,36 @@ final class TelltaleFake implements TelltaleClient
     public function drain(): DrainResult
     {
         return DrainResult::succeeded(0);
+    }
+
+    public function capture(string $name, EventType $type, array $props = [], ?ErrorDetails $error = null): void
+    {
+        $this->event($name, $props);
+    }
+
+    public function report(Throwable $exception, string $source, array $props = []): void
+    {
+        $props['source'] = $source;
+        $this->event($exception::class, $props);
+    }
+
+    /** @param  array<string, mixed>  $props */
+    public function reportRemote(
+        string $class,
+        string $message,
+        ?string $trace,
+        string $source,
+        array $props = [],
+    ): void {
+        $props['source'] = $source;
+        $this->event($class, $props);
+    }
+
+    public function endSession(string $reason): void {}
+
+    public function correlationHeader(): ?string
+    {
+        return null;
     }
 
     /**

@@ -6,8 +6,10 @@ use ArtisanBuild\TelltaleClient\Contracts\TelltaleClient;
 use ArtisanBuild\TelltaleClient\Facades\Telltale;
 use ArtisanBuild\TelltaleClient\Jobs\DrainOutbox;
 use ArtisanBuild\TelltaleClient\NullTelltaleClient;
+use ArtisanBuild\TelltaleClient\Support\DrainScheduler;
 use ArtisanBuild\TelltaleClient\TelltaleClientServiceProvider;
 use ArtisanBuild\TelltaleClient\Testing\TelltaleFake;
+use ArtisanBuild\TelltaleContracts\EventType;
 
 it('loads config, facade, and client bindings under Testbench', function (): void {
     expect(app()->getLoadedProviders())->toHaveKey(TelltaleClientServiceProvider::class, true)
@@ -49,7 +51,7 @@ it('provides a database queue job and an explicit drain entry point', function (
         ->and($job->tries())->toBe(10)
         ->and(Telltale::drain()->successful)->toBeTrue();
 
-    $job->handle($fake);
+    $job->handle($fake, app(DrainScheduler::class));
 });
 
 it('keeps every facade operation safe when local storage construction fails', function (): void {
@@ -64,11 +66,17 @@ it('keeps every facade operation safe when local storage construction fails', fu
     Telltale::optOut();
     Telltale::optIn();
     Telltale::beforeSend(fn (array $event): array => $event);
+    app(TelltaleClient::class)->capture('safe', EventType::Event);
+    app(TelltaleClient::class)->report(new RuntimeException('safe'), 'test');
+    app(TelltaleClient::class)->reportRemote('RuntimeException', 'safe', null, 'test');
+    app(TelltaleClient::class)->endSession('test');
+    $header = app(TelltaleClient::class)->correlationHeader();
     $result = Telltale::drain();
 
     expect(app(TelltaleClient::class))->toBeInstanceOf(NullTelltaleClient::class)
         ->and($result->successful)->toBeFalse()
-        ->and($result->retryAfterSeconds)->toBeNull();
+        ->and($result->retryAfterSeconds)->toBeNull()
+        ->and($header)->toBeNull();
 
     unlink($blockedParent);
 });

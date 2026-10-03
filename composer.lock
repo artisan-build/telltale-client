@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "94810b3b049cae3e05b93ac1f66ba36d",
+    "content-hash": "d194f7df979d0c28139e638a82adbfaf",
     "packages": [
         {
             "name": "artisan-build/telltale-contracts",

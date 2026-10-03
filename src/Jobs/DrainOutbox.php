@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ArtisanBuild\TelltaleClient\Jobs;
 
 use ArtisanBuild\TelltaleClient\Contracts\TelltaleClient;
+use ArtisanBuild\TelltaleClient\Support\DrainScheduler;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
@@ -30,12 +31,20 @@ final class DrainOutbox implements ShouldQueue
         return max(1, (int) config('telltale.queue.tries', 10));
     }
 
-    public function handle(TelltaleClient $telltale): void
+    public function handle(TelltaleClient $telltale, DrainScheduler $scheduler): void
     {
         $result = $telltale->drain();
 
-        if (! $result->successful && $result->retryAfterSeconds !== null && $this->job !== null) {
-            $this->release($result->retryAfterSeconds);
+        if (! $result->successful) {
+            $retryAfter = $result->retryAfterSeconds
+                ?? max(1, (int) config('telltale.backoff.initial_seconds', 15));
+
+            $scheduler->deferred($retryAfter);
+            $this->job?->release($retryAfter);
+
+            return;
         }
+
+        $scheduler->completed();
     }
 }

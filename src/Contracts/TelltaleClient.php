@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace ArtisanBuild\TelltaleClient\Contracts;
 
 use ArtisanBuild\TelltaleClient\Transport\DrainResult;
+use ArtisanBuild\TelltaleContracts\ErrorDetails;
+use ArtisanBuild\TelltaleContracts\EventType;
+use Throwable;
 
 interface TelltaleClient
 {
@@ -25,4 +28,37 @@ interface TelltaleClient
     public function beforeSend(?callable $callback): void;
 
     public function drain(): DrainResult;
+
+    /**
+     * @internal
+     *
+     * @param  array<string, mixed>  $props
+     */
+    public function capture(string $name, EventType $type, array $props = [], ?ErrorDetails $error = null): void;
+
+    /**
+     * @internal
+     *
+     * @param  array<string, mixed>  $props
+     */
+    public function report(Throwable $exception, string $source, array $props = []): void;
+
+    /**
+     * @internal
+     *
+     * @param  array<string, mixed>  $props
+     */
+    public function reportRemote(
+        string $class,
+        string $message,
+        ?string $trace,
+        string $source,
+        array $props = [],
+    ): void;
+
+    /** @internal */
+    public function endSession(string $reason): void;
+
+    /** @internal */
+    public function correlationHeader(): ?string;
 }
