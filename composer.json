@@ -2,19 +2,14 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "artisan-build/telltale-client",
     "description": "NativePHP client package for reporting device analytics to a self-hosted Telltale server.",
-    "keywords": ["telltale", "nativephp", "analytics", "laravel"],
+    "keywords": [
+        "telltale",
+        "nativephp",
+        "analytics",
+        "laravel"
+    ],
     "license": "MIT",
     "type": "library",
-    "version": "1.0.0",
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../telltale-contracts",
-            "options": {
-                "symlink": true
-            }
-        }
-    ],
     "require": {
         "php": "^8.4",
         "artisan-build/telltale-contracts": "^1.0",
